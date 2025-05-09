@@ -1,0 +1,1292 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS Thumbnail Downloader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Poppins:wght@400;600&display=swap');
+
+        body {
+            background-color: #212121; /* YouTube-like dark background */
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+        }
+        .drag-over {
+            border: 2px dashed #f44336; /* YouTube red for drag area */
+            background-color: #424242;
+        }
+        .thumbnail-container {
+            width: 100%;
+            max-width: 1280px;
+            aspect-ratio: 16 / 9;
+            background-color: #424242;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            color: #b0b0b0;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+            position: relative;
+        }
+        .section {
+            background-color: #fff; /* White cards like YouTube */
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            animation: fadeInSection 0.5s ease forwards;
+        }
+        .accordion-header {
+            cursor: pointer;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s ease;
+            color: #212121;
+        }
+        .accordion-header:hover {
+            background-color: #f5f5f5;
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            padding: 0 1.5rem;
+            transition: max-height 0.5s ease, padding 0.5s ease;
+        }
+        .accordion-content.open {
+            max-height: 2000px;
+            padding: 1.5rem;
+        }
+        /* Grid Layout for Home Sections */
+        .home-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 1rem;
+            justify-items: center;
+        }
+        .home-grid.small {
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        }
+        .home-grid .thumbnail-preview,
+        .home-grid .placeholder {
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        .home-grid .placeholder {
+            background: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: #6b7280;
+            border-radius: 8px;
+        }
+        /* Web Browser Sizes */
+        .home-large {
+            max-width: 360px;
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        .home-small {
+            max-width: 240px;
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        .channel-large,
+        .watch-later-large {
+            max-width: 360px;
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        .channel-small,
+        .history,
+        .watch-later-list {
+            max-width: 168px;
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        .sidebar {
+            max-width: 168px;
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        /* Watch Later Section Layout */
+        .watch-later-queue {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .watch-later-queue .video-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .watch-later-queue .thumbnail-preview {
+            flex-shrink: 0;
+        }
+        .watch-later-queue .metadata {
+            flex-grow: 1;
+            margin-top: 0;
+        }
+        .watch-later-queue .placeholder {
+            background: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            color: #6b7280;
+            border-radius: 8px;
+            width: 168px;
+            aspect-ratio: 16/9;
+        }
+        /* Mobile Frame */
+        .mobile-frame {
+            position: relative;
+            width: 300px;
+            height: 600px;
+            background: #000;
+            border: 16px solid #000;
+            border-radius: 36px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            margin: 0 auto;
+        }
+        .mobile-frame::before {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 8px;
+            background: #333;
+            border-radius: 10px;
+        }
+        .mobile-screen {
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            overflow-y: auto;
+        }
+        .mobile-full-width,
+        .mobile-column {
+            max-width: 100%;
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        /* Mobile Grid */
+        .mobile-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .mobile-grid .thumbnail-preview,
+        .mobile-grid .placeholder {
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        .mobile-grid .placeholder {
+            background: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: #6b7280;
+            border-radius: 8px;
+        }
+        /* Apple TV */
+        .appletv-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(384px, 1fr));
+            gap: 1rem;
+            justify-items: center;
+        }
+        .appletv-grid .thumbnail-preview,
+        .appletv-grid .placeholder {
+            width: 100%;
+            max-width: 384px;
+            aspect-ratio: 16/9;
+        }
+        .appletv-grid .placeholder {
+            background: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: #6b7280;
+            border-radius: 8px;
+        }
+        /* Original Image */
+        .original-image {
+            max-width: 1280px;
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        /* Detailed Thumbnail Styling */
+        .thumbnail-preview {
+            position: relative;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .thumbnail-preview:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+        .thumbnail-preview .thumbnail-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        .thumbnail-preview .duration {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 2px 6px;
+            font-size: 12px;
+            border-radius: 3px;
+            z-index: 10;
+            text-shadow: 0 0 5px #fff, 0 0 10px #ff4444; /* Glowing effect */
+        }
+        .thumbnail-preview .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 4px;
+            background: rgba(255, 0, 0, 0.5); /* YouTube red progress bar */
+            border-radius: 0 0 8px 8px;
+            animation: progress 3s ease infinite;
+            z-index: 10;
+        }
+        .thumbnail-preview .channel-icon {
+            width: 36px;
+            height: 36px;
+            background: #d1d5db;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        .thumbnail-preview .metadata {
+            display: flex;
+            align-items: center;
+            margin-top: 0.25rem;
+            color: #212121; /* YouTube-like text color on white cards */
+        }
+        .thumbnail-preview .title {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #212121;
+            line-height: 1.3;
+            margin-bottom: 0.25rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            opacity: 0;
+            animation: fadeInTitle 0.3s ease forwards;
+            text-shadow: 0 0 5px #fff, 0 0 10px #ff4444; /* Glowing effect */
+        }
+        .thumbnail-preview .info {
+            font-size: 0.875rem;
+            color: #606060; /* YouTube-like gray for metadata */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .thumbnail-preview.small .title {
+            font-size: 0.875rem;
+        }
+        .thumbnail-preview.small .info {
+            font-size: 0.75rem;
+        }
+        .thumbnail-preview.small .channel-icon {
+            width: 24px;
+            height: 24px;
+        }
+        .thumbnail-preview.small .duration {
+            font-size: 10px;
+            padding: 1px 4px;
+        }
+        .thumbnail-preview.small .progress-bar {
+            height: 3px;
+        }
+        /* Title Input Styling */
+        .title-input {
+            width: 100%;
+            max-width: 1280px;
+            padding: 0.75rem;
+            border: 2px solid #424242;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            background-color: #fff;
+            color: #212121;
+        }
+        .title-input:focus {
+            border-color: #f44336; /* YouTube red */
+            box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
+            animation: pulse 0.5s ease;
+        }
+        /* URL Input Styling */
+        .url-input {
+            width: 100%;
+            max-width: 600px;
+            padding: 0.75rem;
+            border: 2px solid #424242;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            background-color: #fff;
+            color: #212121;
+        }
+        .url-input:focus {
+            border-color: #f44336;
+            box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
+            animation: pulse 0.5s ease;
+        }
+        /* Upload Button Glow */
+        #uploadButton {
+            position: relative;
+            background: linear-gradient(45deg, #f44336, #ff6f61); /* YouTube red gradient */
+            box-shadow: 0 0 15px #f44336, 0 0 30px #ff6f61;
+            transition: box-shadow 0.3s ease;
+        }
+        #uploadButton:hover {
+            box-shadow: 0 0 20px #f44336, 0 0 40px #ff6f61;
+        }
+        #uploadButton::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        /* Action Buttons */
+        .action-button {
+            background: linear-gradient(45deg, #f44336, #ff6f61);
+            color: #fff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            transition: box-shadow 0.3s ease;
+        }
+        .action-button:hover {
+            box-shadow: 0 0 15px #f44336, 0 0 30px #ff6f61;
+        }
+        /* Balloon Animation */
+        .balloon-container {
+            position: fixed;
+            right: 20px;
+            top: 0;
+            height: 100vh;
+            width: 80px; /* Ensure enough width for balloon */
+            overflow: hidden;
+            z-index: 1000;
+            display: none; /* Hidden by default, shown only on Thumbnail Previewer */
+        }
+        .balloon-container.active {
+            display: block;
+        }
+        .balloon-group {
+            position: absolute;
+            bottom: -150px;
+            right: 0;
+            animation: floatUp 6s linear infinite;
+        }
+        .balloon-group:nth-child(2) {
+            animation-delay: 3s; /* Second balloon starts 3s after the first */
+        }
+        .balloon {
+            width: 40px;
+            height: 50px;
+            background-color: #f44336; /* Red balloon */
+            border-radius: 50% 50% 40% 40%;
+            position: relative;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+        }
+        .rope {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 30px;
+            background-color: #8d5524; /* Rope color */
+        }
+        .balloon-thumbnail {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 48px;
+            aspect-ratio: 16/9;
+            background: #424242;
+            border-radius: 4px;
+        }
+        .balloon-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        @keyframes floatUp {
+            0% {
+                bottom: -150px;
+                opacity: 0;
+                transform: translateX(0);
+            }
+            10% {
+                opacity: 1;
+            }
+            50% {
+                transform: translateX(-10px); /* Slight horizontal sway */
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                bottom: 100%;
+                opacity: 0;
+                transform: translateX(0);
+            }
+        }
+        /* Navigation Styling */
+        .nav-link {
+            color: #fff;
+            padding: 0.75rem 1.5rem;
+            transition: background-color 0.3s ease, text-shadow 0.3s ease;
+            position: relative;
+        }
+        .nav-link:hover {
+            background-color: #424242;
+            text-shadow: 0 0 10px #f44336, 0 0 20px #f44336;
+            animation: flyUp 0.3s ease forwards;
+        }
+        .nav-link:active {
+            text-shadow: 0 0 15px #f44336, 0 0 30px #f44336;
+            animation: flyUp 0.3s ease forwards;
+        }
+        .nav-link.active {
+            background-color: #f44336;
+            text-shadow: 0 0 10px #f44336, 0 0 20px #f44336;
+        }
+        /* Page Content */
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        /* Header Styling */
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 1rem 2rem;
+            background-color: #181818;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        .header-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 10px #f44336, 0 0 20px #f44336;
+            letter-spacing: 1px;
+        }
+        .header-logo {
+            width: 40px;
+            height: 40px;
+            background-color: #f44336;
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-left: 1rem;
+            box-shadow: 0 0 10px #f44336;
+        }
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes fadeInSection {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInTitle {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes progress {
+            0% { width: 0; }
+            50% { width: 50%; }
+            100% { width: 0; }
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(244, 67, 54, 0.1); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
+        }
+        @keyframes flyUp {
+            0% {
+                transform: translateY(0) scale(1);
+            }
+            50% {
+                transform: translateY(-5px) scale(1.05);
+            }
+            100% {
+                transform: translateY(0) scale(1);
+            }
+        }
+        @media (max-width: 768px) {
+            .home-grid,
+            .home-grid.small {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            }
+            .watch-later-queue .video-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .watch-later-queue .thumbnail-preview {
+                width: 100%;
+                max-width: 240px;
+            }
+            .balloon-container {
+                right: 10px;
+            }
+            .balloon {
+                width: 32px;
+                height: 40px;
+            }
+            .rope {
+                top: 40px;
+                height: 20px;
+            }
+            .balloon-thumbnail {
+                top: 60px;
+                width: 32px;
+            }
+            .nav-links {
+                flex-direction: column;
+            }
+            .nav-link {
+                text-align: center;
+            }
+            .header-title {
+                font-size: 1.25rem;
+            }
+            .header-logo {
+                width: 32px;
+                height: 32px;
+                font-size: 1rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .container {
+                padding: 1rem;
+            }
+            .thumbnail-container {
+                font-size: 1rem;
+            }
+            .mobile-frame {
+                width: 280px;
+                height: 560px;
+            }
+            .title-input, .url-input {
+                font-size: 0.875rem;
+            }
+            #uploadButton, .action-button {
+                font-size: 0.875rem;
+                padding: 0.5rem 1rem;
+            }
+            .header {
+                padding: 0.5rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="font-sans">
+    <!-- Header with Title and Logo -->
+    <header class="header">
+        <h1 class="header-title">CS THUMBNAIL DOWNLOADER</h1>
+        <div class="header-logo">CS</div>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav class="bg-gray-800 p-4">
+        <div class="container mx-auto">
+            <div class="flex nav-links justify-center">
+                <a href="#" class="nav-link active" data-page="thumbnail-downloader">Thumbnail Downloader</a>
+                <a href="#" class="nav-link" data-page="thumbnail-previewer">Thumbnail Previewer</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto p-6">
+        <!-- Thumbnail Previewer Page -->
+        <div id="thumbnail-previewer" class="page">
+            <h1 class="text-3xl font-bold text-white mb-6 text-center">Thumbnail Previewer</h1>
+
+            <!-- Image Upload Area -->
+            <div class="mb-6 flex flex-col items-center">
+                <div class="thumbnail-container shadow-lg mb-4" id="thumbnailArea">
+                    Drag & Drop or Click to Upload Thumbnail
+                </div>
+                <input type="file" id="thumbnailInput" accept="image/*" class="hidden">
+                <button id="uploadButton" class="text-white px-4 py-2 rounded-lg">Upload Image</button>
+                <!-- Title Input -->
+                <div class="mt-4 w-full max-w-[1280px]">
+                    <input type="text" id="titleInput" class="title-input" placeholder="Enter your video title here...">
+                </div>
+            </div>
+
+            <!-- Balloon Animation (Only on Thumbnail Previewer) -->
+            <div class="balloon-container">
+                <div class="balloon-group">
+                    <div class="balloon"></div>
+                    <div class="rope"></div>
+                    <div class="balloon-thumbnail">
+                        <img src="" alt="Balloon Thumbnail" class="balloon-img">
+                    </div>
+                </div>
+                <div class="balloon-group">
+                    <div class="balloon"></div>
+                    <div class="rope"></div>
+                    <div class="balloon-thumbnail">
+                        <img src="" alt="Balloon Thumbnail" class="balloon-img">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sections (Collapsible) -->
+            <div class="space-y-4">
+                <!-- Web Browser Section (Open by Default) -->
+                <div class="section">
+                    <div class="accordion-header">
+                        <h2 class="text-xl font-semibold">Web Browser</h2>
+                        <span class="text-gray-500">▲</span>
+                    </div>
+                    <div class="accordion-content open">
+                        <div class="space-y-6">
+                            <!-- Home Large -->
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">Home Large</h3>
+                                <div class="home-grid">
+                                    <div class="placeholder">?</div>
+                                    <div class="placeholder">?</div>
+                                    <div class="home-large thumbnail-preview">
+                                        <div class="thumbnail-wrapper">
+                                            <img src="" alt="Home Large Preview" class="thumbnail-img hidden">
+                                            <span class="duration">10:23</span>
+                                            <div class="progress-bar"></div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <p class="title">Enter your title to see how it looks!</p>
+                                            <div class="metadata">
+                                                <div class="channel-icon"></div>
+                                                <p class="info">Your Channel • 123K views • 1 hour ago</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="placeholder">?</div>
+                                    <div class="placeholder">?</div>
+                                </div>
+                            </div>
+                            <!-- Home Small -->
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">Home Small</h3>
+                                <div class="home-grid small">
+                                    <div class="placeholder">?</div>
+                                    <div class="placeholder">?</div>
+                                    <div class="home-small thumbnail-preview small">
+                                        <div class="thumbnail-wrapper">
+                                            <img src="" alt="Home Small Preview" class="thumbnail-img hidden">
+                                            <span class="duration">10:23</span>
+                                            <div class="progress-bar"></div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <p class="title">Enter your title to see how it looks!</p>
+                                            <div class="metadata">
+                                                <div class="channel-icon"></div>
+                                                <p class="info">Your Channel • 123K views • 1h</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="placeholder">?</div>
+                                    <div class="placeholder">?</div>
+                                </div>
+                            </div>
+                            <!-- Sidebar -->
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">Sidebar</h3>
+                                <div class="space-y-2">
+                                    <div class="placeholder">?</div>
+                                    <div class="sidebar thumbnail-preview small">
+                                        <div class="thumbnail-wrapper">
+                                            <img src="" alt="Sidebar Preview" class="thumbnail-img hidden">
+                                            <span class="duration">10:23</span>
+                                            <div class="progress-bar"></div>
+                                        </div>
+                                        <div class="mt-1">
+                                            <p class="title">Enter your title...</p>
+                                            <div class="metadata">
+                                                <div class="channel-icon"></div>
+                                                <p class="info">Your Channel • 123K views • 1h</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="placeholder">?</div>
+                                </div>
+                            </div>
+                            <!-- Watch Later Section -->
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">Watch Later</h3>
+                                <div class="watch-later-queue">
+                                    <!-- Video Item 1 (Placeholder) -->
+                                    <div class="video-item">
+                                        <div class="watch-later-list placeholder">?</div>
+                                        <div class="metadata">
+                                            <p class="title">Enter your title...</p>
+                                            <div class="flex items-center">
+                                                <div class="channel-icon"></div>
+                                                <p class="info">Your Channel • 123K views • 1h</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Video Item 2 (Placeholder) -->
+                                    <div class="video-item">
+                                        <div class="watch-later-list placeholder">?</div>
+                                        <div class="metadata">
+                                            <p class="title">Enter your title...</p>
+                                            <div class="flex items-center">
+                                                <div class="channel-icon"></div>
+                                                <p class="info">Your Channel • 85K views • 2h</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Video Item 3 (User Thumbnail) -->
+                                    <div class="video-item">
+                                        <div class="watch-later-list thumbnail-preview small">
+                                            <div class="thumbnail-wrapper">
+                                                <img src="" alt="Watch Later Preview" class="thumbnail-img hidden">
+                                                <span class="duration">15:30</span>
+                                                <div class="progress-bar"></div>
+                                            </div>
+                                        </div>
+                                        <div class="metadata">
+                                            <p class="title">Enter your title...</p>
+                                            <div class="flex items-center">
+                                                <div class="channel-icon"></div>
+                                                <p class="info">Your Channel • 200K views • 3h</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Channel Page: Large -->
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">Channel Page: Large</h3>
+                                <div class="channel-large thumbnail-preview">
+                                    <div class="thumbnail-wrapper">
+                                        <img src="" alt="Channel Large Preview" class="thumbnail-img hidden">
+                                        <span class="duration">10:23</span>
+                                        <div class="progress-bar"></div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <p class="title">Enter your title to see how it looks!</p>
+                                        <div class="metadata">
+                                            <div class="channel-icon"></div>
+                                            <p class="info">123K views • 1 hour ago</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Channel Page: Small -->
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">Channel Page: Small</h3>
+                                <div class="channel-small thumbnail-preview small">
+                                    <div class="thumbnail-wrapper">
+                                        <img src="" alt="Channel Small Preview" class="thumbnail-img hidden">
+                                        <span class="duration">10:23</span>
+                                        <div class="progress-bar"></div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <p class="title">Enter your title...</p>
+                                        <div class="metadata">
+                                            <div class="channel-icon"></div>
+                                            <p class="info">123K views • 1h</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- History -->
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">History</h3>
+                                <div class="history thumbnail-preview small">
+                                    <div class="thumbnail-wrapper">
+                                        <img src="" alt="History Preview" class="thumbnail-img hidden">
+                                        <span class="duration">10:23</span>
+                                        <div class="progress-bar"></div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <p class="title">Enter your title...</p>
+                                        <div class="metadata">
+                                            <div class="channel-icon"></div>
+                                            <p class="info">123K views • 1h</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Watch Later: Large -->
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">Watch Later: Large</h3>
+                                <div class="watch-later-large thumbnail-preview">
+                                    <div class="thumbnail-wrapper">
+                                        <img src="" alt="Watch Later Large Preview" class="thumbnail-img hidden">
+                                        <span class="duration">10:23</span>
+                                        <div class="progress-bar"></div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <p class="title">Enter your title to see how it looks!</p>
+                                        <div class="metadata">
+                                            <div class="channel-icon"></div>
+                                            <p class="info">123K views • 1 hour ago</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Watch Later: List -->
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">Watch Later: List</h3>
+                                <div class="watch-later-list thumbnail-preview small">
+                                    <div class="thumbnail-wrapper">
+                                        <img src="" alt="Watch Later List Preview" class="thumbnail-img hidden">
+                                        <span class="duration">10:23</span>
+                                        <div class="progress-bar"></div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <p class="title">Enter your title...</p>
+                                        <div class="metadata">
+                                            <div class="channel-icon"></div>
+                                            <p class="info">123K views • 1h</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Section (Collapsed by Default) -->
+                <div class="section">
+                    <div class="accordion-header">
+                        <h2 class="text-xl font-semibold">Mobile</h2>
+                        <span class="text-gray-500">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="mobile-frame">
+                            <div class="mobile-screen p-4 space-y-6">
+                                <!-- Home: Full Width -->
+                                <div>
+                                    <h3 class="text-lg font-medium text-gray-600 mb-2">Home: Full Width</h3>
+                                    <div class="mobile-grid">
+                                        <div class="placeholder">?</div>
+                                        <div class="mobile-full-width thumbnail-preview">
+                                            <div class="thumbnail-wrapper">
+                                                <img src="" alt="Mobile Full Width Preview" class="thumbnail-img hidden">
+                                                <span class="duration">10:23</span>
+                                                <div class="progress-bar"></div>
+                                            </div>
+                                            <div class="mt-1">
+                                                <p class="title">Enter your title to see how it looks!</p>
+                                                <div class="metadata">
+                                                    <div class="channel-icon"></div>
+                                                    <p class="info">Your Channel • 123K views • 1h</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="placeholder">?</div>
+                                    </div>
+                                </div>
+                                <!-- Column -->
+                                <div>
+                                    <h3 class="text-lg font-medium text-gray-600 mb-2">Column</h3>
+                                    <div class="mobile-grid">
+                                        <div class="placeholder">?</div>
+                                        <div class="mobile-column thumbnail-preview">
+                                            <div class="thumbnail-wrapper">
+                                                <img src="" alt="Mobile Column Preview" class="thumbnail-img hidden">
+                                                <span class="duration">10:23</span>
+                                                <div class="progress-bar"></div>
+                                            </div>
+                                            <div class="mt-1">
+                                                <p class="title">Enter your title...</p>
+                                                <div class="metadata">
+                                                    <div class="channel-icon"></div>
+                                                    <p class="info">Your Channel • 123K views • 1h</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="placeholder">?</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Apple TV Section (Collapsed by Default) -->
+                <div class="section">
+                    <div class="accordion-header">
+                        <h2 class="text-xl font-semibold">Apple TV</h2>
+                        <span class="text-gray-500">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="appletv-grid">
+                            <div class="placeholder">?</div>
+                            <div class="thumbnail-preview">
+                                <div class="thumbnail-wrapper">
+                                    <img src="" alt="Apple TV Preview" class="thumbnail-img hidden">
+                                    <span class="duration">10:23</span>
+                                    <div class="progress-bar"></div>
+                                </div>
+                                <div class="mt-2">
+                                    <p class="title">Enter your title to see how it looks!</p>
+                                    <div class="metadata">
+                                        <div class="channel-icon"></div>
+                                        <p class="info">Your Channel • 123K views • 1 hour ago</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="placeholder">?</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Original Image Section (Collapsed by Default) -->
+                <div class="section">
+                    <div class="accordion-header">
+                        <h2 class="text-xl font-semibold">Original Image</h2>
+                        <span class="text-gray-500">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="original-image">
+                            <img src="" alt="Original Image" class="thumbnail-img hidden">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thumbnail Downloader Page -->
+        <div id="thumbnail-downloader" class="page active">
+            <h1 class="text-3xl font-bold text-white mb-6 text-center">Thumbnail Downloader</h1>
+            <div class="flex flex-col items-center mb-6">
+                <input type="text" id="thumbnailDownloaderUrl" class="url-input mb-4" placeholder="Enter YouTube video URL...">
+                <button id="fetchThumbnailButton" class="action-button">Fetch Thumbnail</button>
+            </div>
+            <div id="thumbnailDownloaderOutput" class="flex flex-col items-center">
+                <!-- Thumbnails will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Navigation Functionality
+        const navLinks = document.querySelectorAll('.nav-link');
+        const pages = document.querySelectorAll('.page');
+        const balloonContainer = document.querySelector('.balloon-container');
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = link.getAttribute('data-page');
+
+                // Remove active class from all links and pages
+                navLinks.forEach(l => l.classList.remove('active'));
+                pages.forEach(p => p.classList.remove('active'));
+
+                // Add active class to clicked link and corresponding page
+                link.classList.add('active');
+                document.getElementById(pageId).classList.add('active');
+
+                // Show balloon animation only on Thumbnail Previewer
+                if (pageId === 'thumbnail-previewer') {
+                    balloonContainer.classList.add('active');
+                } else {
+                    balloonContainer.classList.remove('active');
+                }
+            });
+        });
+
+        // Thumbnail Previewer Functionality
+        const thumbnailArea = document.getElementById('thumbnailArea');
+        const thumbnailInput = document.getElementById('thumbnailInput');
+        const uploadButton = document.getElementById('uploadButton');
+        const thumbnailImgs = document.querySelectorAll('.thumbnail-img');
+        const balloonImgs = document.querySelectorAll('.balloon-img');
+        const balloonGroups = document.querySelectorAll('.balloon-group');
+        const titleInput = document.getElementById('titleInput');
+        const titleElements = document.querySelectorAll('.thumbnail-preview .title');
+
+        thumbnailArea.addEventListener('click', () => {
+            thumbnailInput.click();
+        });
+
+        thumbnailInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImageUpload(file);
+            } else {
+                alert('Please upload an image file!');
+            }
+        });
+
+        uploadButton.addEventListener('click', () => {
+            thumbnailInput.click();
+        });
+
+        thumbnailArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            thumbnailArea.classList.add('drag-over');
+        });
+
+        thumbnailArea.addEventListener('dragleave', () => {
+            thumbnailArea.classList.remove('drag-over');
+        });
+
+        thumbnailArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            thumbnailArea.classList.remove('drag-over');
+
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImageUpload(file);
+            } else {
+                alert('Please drop an image file!');
+            }
+        });
+
+        function handleImageUpload(file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const imageSrc = event.target.result;
+
+                // Do not update thumbnail area; keep it as "Drag & Drop or Click to Upload Thumbnail"
+                // Update all thumbnail images in preview sections
+                thumbnailImgs.forEach(img => {
+                    img.src = imageSrc;
+                    img.classList.remove('hidden');
+                });
+
+                // Update balloon images and restart animation
+                balloonImgs.forEach(img => {
+                    img.src = imageSrc;
+                    img.classList.remove('hidden');
+                });
+
+                // Restart balloon animation by resetting the animation
+                balloonGroups.forEach(group => {
+                    group.style.animation = 'none';
+                    group.offsetHeight; // Trigger reflow to restart animation
+                    group.style.animation = 'floatUp 6s linear infinite';
+                });
+            };
+            reader.onerror = () => {
+                alert('Failed to load the image. Please try again.');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        titleInput.addEventListener('input', (e) => {
+            const newTitle = e.target.value || 'Enter your title to see how it looks!';
+            titleElements.forEach(title => {
+                title.textContent = newTitle;
+                title.style.animation = 'none';
+                title.offsetHeight;
+                title.style.animation = 'fadeInTitle 0.3s ease forwards';
+            });
+        });
+
+        const accordionHeaders = document.querySelectorAll('.accordion-header');
+        accordionHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const content = header.nextElementSibling;
+                const isOpen = content.classList.contains('open');
+                
+                content.classList.toggle('open');
+                
+                const arrow = header.querySelector('span');
+                arrow.textContent = isOpen ? '▼' : '▲';
+            });
+        });
+
+        // Utility Function: Extract Video ID from YouTube URL
+        function extractVideoId(url) {
+            const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = url.match(regex);
+            return match ? match[1] : null;
+        }
+
+        // Thumbnail Downloader Functionality
+        const thumbnailDownloaderUrlInput = document.getElementById('thumbnailDownloaderUrl');
+        const fetchThumbnailButton = document.getElementById('fetchThumbnailButton');
+        const thumbnailDownloaderOutput = document.getElementById('thumbnailDownloaderOutput');
+
+        fetchThumbnailButton.addEventListener('click', () => {
+            const url = thumbnailDownloaderUrlInput.value.trim();
+            const videoId = extractVideoId(url);
+
+            if (!videoId) {
+                alert('Please enter a valid YouTube video URL!');
+                return;
+            }
+
+            // Define thumbnail URLs in the requested order
+            const thumbnails = [
+                { url: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`, label: "Max Quality", dimensions: "1280x720", fileName: `thumbnail-${videoId}-maxres.jpg` },
+                { url: `https://img.youtube.com/vi/${videoId}/sddefault.jpg`, label: "Standard Quality", dimensions: "640x480", fileName: `thumbnail-${videoId}-sd.jpg` },
+                { url: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`, label: "High Quality", dimensions: "480x360", fileName: `thumbnail-${videoId}-hq.jpg` },
+                { url: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`, label: "Medium Quality", dimensions: "320x180", fileName: `thumbnail-${videoId}-mq.jpg` },
+                { url: `https://img.youtube.com/vi/${videoId}/default.jpg`, label: "Low Quality", dimensions: "120x90", fileName: `thumbnail-${videoId}-default.jpg` }
+            ];
+
+            // Generate HTML for thumbnails with download buttons
+            thumbnailDownloaderOutput.innerHTML = `
+                <div class="text-center space-y-6">
+                    ${thumbnails.map((thumb, index) => `
+                        <div class="flex flex-col items-center">
+                            <h3 class="text-lg font-semibold text-white mb-2">${thumb.label} (${thumb.dimensions})</h3>
+                            <img src="${thumb.url}" alt="${thumb.label} Thumbnail" class="block mx-auto max-w-full rounded-lg mb-2" style="max-width: ${thumb.dimensions.split('x')[0]}px;">
+                            <button class="action-button downloadThumbnailButton" data-url="${thumb.url}" data-filename="${thumb.fileName}">
+                                Download ${thumb.label}
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            // Add download functionality for each button
+            const downloadButtons = document.querySelectorAll('.downloadThumbnailButton');
+            downloadButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const thumbnailUrl = button.getAttribute('data-url');
+                    const fileName = button.getAttribute('data-filename');
+                    fetch(thumbnailUrl)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = fileName;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(url);
+                        })
+                        .catch(() => alert('Failed to download thumbnail. Please try again.'));
+                });
+            });
+        });
+
+        // Initialize balloon animation on page load
+        balloonGroups.forEach((group, index) => {
+            group.style.animationDelay = `${index * 3}s`;
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93d1eb99ef7de58e',t:'MTc0NjgwMTI5NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
